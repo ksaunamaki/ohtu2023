@@ -13,9 +13,9 @@ def main():
         if player.nationality == "FIN":
             players.append(player)
 
-    print(f"Players from FIN:\n")
+    print(f"Players from FIN\n")
 
-    for player in players:
+    for player in sorted(players, key=lambda player: player.total, reverse=True):
         print(player)
 
 if __name__ == "__main__":
