@@ -97,3 +97,54 @@ class TestKauppa(unittest.TestCase):
 
         # varmistetaan, että metodia tilisiirto on kutsuttu oikealla parametreilla
         self.pankki_mock.tilisiirto.assert_called_with("pekka", 42, "12345", self.kauppa._kaupan_tili, 5)
+
+    def test_aloita_asiointi_nollaa_tilan(self):
+        # tehdään ostokset
+        self.kauppa.aloita_asiointi()
+        self.kauppa.lisaa_koriin(1)
+        self.kauppa.lisaa_koriin(2)
+        self.kauppa.tilimaksu("pekka", "12345")
+
+        # palautetaan alkutilanne
+        self.kauppa.aloita_asiointi()
+        self.kauppa.lisaa_koriin(1)
+        self.kauppa.tilimaksu("jukka", "67890")
+
+        # varmistetaan, että tilisiirtoa on kutsuttu uuden ostoksen tiedoilla
+        self.pankki_mock.tilisiirto.assert_called_with("jukka", 42, "67890", self.kauppa._kaupan_tili, 5)
+
+    def test_jokainen_maksutapahtuma_saa_uuden_viitenumeron(self):
+        # Tehdään uusi mock-viitegenraattori joka palauttaa ennustettavat viitenumerot
+        self.viitegeneraattori_mock = Mock()
+
+        # määritellään että metodi palauttaa ensimmäisellä kutsulla 1, toisella 2 ja kolmannella 3
+        self.viitegeneraattori_mock.uusi.side_effect = [1, 2, 3]
+    
+        self.kauppa = Kauppa(self.varasto_mock, self.pankki_mock, self.viitegeneraattori_mock)
+
+        self.kauppa.aloita_asiointi()
+        self.kauppa.lisaa_koriin(1)
+        self.kauppa.tilimaksu("jukka", "67890")
+
+        # Varmistetaan ensimmäinen viitenumero generoituu oikein
+        self.pankki_mock.tilisiirto.assert_called_with(ANY, 1, ANY, ANY, ANY)
+
+        # Toinen testiosto
+        self.kauppa.aloita_asiointi()
+        self.kauppa.lisaa_koriin(1)
+        self.kauppa.tilimaksu("jukka", "67890")
+
+        # Varmistetaan toinen viitenumero generoituu oikein
+        self.pankki_mock.tilisiirto.assert_called_with(ANY, 2, ANY, ANY, ANY)
+
+    def test_poistettu_tuote_ei_mukana_maksussa(self):
+        # tehdään ostokset
+        self.kauppa.aloita_asiointi()
+        self.kauppa.lisaa_koriin(2)
+        self.kauppa.lisaa_koriin(2)
+        self.kauppa.poista_korista(2)
+        self.kauppa.tilimaksu("pekka", "12345")
+
+        # varmistetaan, että metodia tilisiirto on kutsuttu oikealla summalla
+        self.pankki_mock.tilisiirto.assert_called_with(ANY, ANY, ANY, ANY, 7)
+
